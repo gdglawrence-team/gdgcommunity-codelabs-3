@@ -1,0 +1,315 @@
+
+<!doctype html>
+
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, minimum-scale=1.0, initial-scale=1.0, user-scalable=yes">
+  <meta name="theme-color" content="#4F7DC9">
+  <meta charset="UTF-8">
+  <title>GDG Lawrence Full Stack Community / Creating a Form in Angular</title>
+  <link rel="stylesheet" href="//fonts.googleapis.com/css?family=Source+Code+Pro:400|Roboto:400,300,400italic,500,700|Roboto+Mono">
+  <link rel="stylesheet" href="//fonts.googleapis.com/icon?family=Material+Icons">
+  <link rel="stylesheet" href="https://storage.googleapis.com/codelab-elements/codelab-elements.css">
+  <style>
+    .success {
+      color: #1e8e3e;
+    }
+    .error {
+      color: red;
+    }
+  </style>
+</head>
+<body>
+  <google-codelab-analytics gaid="UA-49880327-14"></google-codelab-analytics>
+  <google-codelab codelab-gaid=""
+                  id="codelab3_form"
+                  title="GDG Lawrence Full Stack Community / Creating a Form in Angular"
+                  environment="web"
+                  feedback-link="">
+    
+      <google-codelab-step label="Overview" duration="2">
+        <p>This codelab provides the tutorial on how to create the GDG Community project form to allow users to provide input into the system and allow them to register.</p>
+<h2 is-upgraded>What you will learn</h2>
+<ul>
+<li>How to create the Form page</li>
+<li>Adding Interface Models</li>
+<li>Basic Understanding on Angular&#39;s State Management using Services, Rxjs&#39;s BehaviorSubject, Observables and Subscriptions</li>
+<li>How to create reusable Angular Components</li>
+<li>More on Responsive Design / Flexbox Model / CSS3 strategies</li>
+</ul>
+<h2 is-upgraded>Prerequisites</h2>
+<ul>
+<li>Full Stack Development Environment Setup</li>
+<li>Familiar with Html, CSS, and Typescript</li>
+<li>Internet Connection</li>
+</ul>
+<p>At the end of this lab, you will have a form page that looks like the following:</p>
+<p class="image-container"><img alt="alt text" src="img/1c592029427696ae.png"></p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Creating the Form Page" duration="0">
+        <p>In the previous lab, you should&#39;ve created the login page in full, and the placeholder form page. If not, refer back to the previous lab where the form page is created, then come back to this lab.</p>
+<p>If so, please find the <strong>form.component.html</strong>. Let&#39;s build the page structure.</p>
+<pre><code>&lt;div id=&#34;form-page-container&#34;&gt;
+    &lt;!-- placeholder for application bar --&gt;
+    &lt;div class=&#34;form-page-wrapper&#34;&gt;
+        &lt;header&gt;
+            &lt;div class=&#34;form-page-welcome&#34;&gt;Welcome to GDG Community&lt;/div&gt;
+            &lt;div class=&#34;form-page-msg&#34;&gt;Please fill out the following form:&lt;/div&gt;
+        &lt;/header&gt;
+        &lt;section class=&#34;form-step-container&#34;&gt;
+            &lt;!-- placeholder for form steps --&gt;
+            &lt;div class=&#34;form-step&#34;&gt;
+                &lt;!-- placeholder for steps --&gt;
+            &lt;/div&gt;
+        &lt;/section&gt;
+        &lt;button class=&#34;form-continue-btn common-btn&#34;&gt;
+            Continue
+        &lt;/button&gt;
+    &lt;/div&gt;
+&lt;/div&gt;
+</code></pre>
+<p>Lets include the following CSS in the corresponding form.component.less.</p>
+<pre><code>@import &#39;./../../assets/styles/colors.less&#39;;
+
+#form-page-container {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+
+    .form-page-wrapper {
+        margin: 32px;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        flex: 1;
+
+        
+        .form-page-welcome {
+            font-size: 32px;
+            color: @color_blue;
+        }
+
+        .form-page-msg {
+            margin-top: 16px;
+            font-size: 24px;
+            color: @color_grey;
+        }
+
+        .form-step-container {
+            flex: 1;
+        }
+
+        .form-continue-btn {
+            background: @color_blue;
+
+            &amp;:disabled {
+                opacity: 0.5;
+                cursor: not-allowed !important;
+            }
+        }
+
+        .form-step {
+            margin-top: 32px;
+        }
+    }
+}
+</code></pre>
+<p>The <strong>#form-page-container</strong> will occupy the full height of the browser&#39;s viewport and display its child items in a column.</p>
+<p>The <strong>.form-page-wrapper</strong> is the most immediate child of the <strong>#form-page-container</strong>, which in turn also lays its children as a column using <em>display: flex</em>, and <em>flex-direction: column</em>. It uses a <em>height: 100%</em> to match its parent&#39;s height and <em>flex: 1</em> so as to take up the most room in the available space heightwise within its parent. More info on flexbox <a href="https://css-tricks.com/snippets/css/a-guide-to-flexbox/" target="_blank">here</a>.</p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Adding Interface Models" duration="0">
+        <p>Inside the <strong>app</strong> project folder, create a folder called <em>models</em>. This folder will hold some interfaces - files that contain the contract that the user must follow when creating JSON objects as far as their properties and their correspondign type. Let&#39;s create an interface called <strong>StepModel</strong>. We will be using this model for holding a reference to a form step. Save it as <em>step.model.ts</em>.</p>
+<pre><code>export interface StepModel {
+    stepIndex: number;
+    isComplete: boolean;
+    isCurrent: boolean;
+}
+</code></pre>
+<p>This model defines three properties:</p>
+<ul>
+<li>stepIndex: with type <em>number</em> which hold the step&#39;s index.</li>
+<li>isComplete: with type <em>boolean</em> which will hold the value whether the step is complete or not.</li>
+<li>isCurrent: with type <em>boolean</em> which holds the value whetehr the step is the current one, as the user traverses through the form steps.</li>
+</ul>
+<p>We&#39;ll create more models later as we need them.</p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Adding a Steps Service" duration="0">
+        <p>In order to maintain a reference to the form steps available, what the current step is, etc. in a global, application-wide manner, Angular relies on services. Angular Services are entities that are provided via dependency injection to whoever is interested, and can be used to hold data and application state and to be shared among components and services. Services the glue that holds together components and services in a loosely coupled fashion. More on services <a href="https://angular.io/tutorial/toh-pt4" target="_blank">here</a>.</p>
+<p>In the <em>services</em> folder, create a service called <strong>steps</strong> using the Angular CLI:</p>
+<pre><code>ng g s steps
+</code></pre>
+<p>The Angular CLI creates a file named <strong>steps.service.ts</strong> with some boilerplate code. The name of the service class is called <em>StepsService</em>. In order to make it available throughout the application as a global singleton, you must add it as a provider to the main app&#39;s module.</p>
+<p>Go to the <em>app.module.ts</em> and add the <em>StepsService</em> as a provider, along with the <em>AuthenticationService</em>. Locate the <strong>providers</strong> section, and add the service as follows:</p>
+<pre><code>...
+providers: [
+    AuthenticationService,
+    StepsService // &lt;-- will make it available globally as a singleton
+  ],
+...
+</code></pre>
+<p>Now, let&#39;s get back to the <strong>StepsService</strong> service file. At the top of the file, let&#39;s create the schema for what the steps payload should look like:</p>
+<pre><code>...
+const STEPS = [
+  { stepIndex: 1, isComplete: false, isCurrent: false },
+  { stepIndex: 2, isComplete: false, isCurrent: false },
+  { stepIndex: 3, isComplete: false, isCurrent: false }
+];
+...
+</code></pre>
+<p>Inside of the <strong>StepsService</strong> class, let&#39;s add references to the steps and current steps, making them of type <strong>BehaviorSubject</strong>. A <strong>BehaviorSubject</strong> allows entities to subscribe to it, and receive / listen to value changes as they occur over time, as they change. BehaviorSubjects require a seed / initial value and emit the current value to new subscribers. BehaviorSubjects are an RxJS concept. More on BehaviorSubjects <a href="https://www.learnrxjs.io/learn-rxjs/subjects/behaviorsubject" target="_blank">here</a>.</p>
+<pre><code>...
+steps$: BehaviorSubject&lt;StepModel[]&gt; = new BehaviorSubject&lt;StepModel[]&gt;(STEPS);
+currentStep$: BehaviorSubject&lt;StepModel&gt; = new BehaviorSubject&lt;StepModel&gt;(null);
+...
+</code></pre>
+<p>We initialize the <strong>steps$</strong> BehaviorSubject with the <strong>STEPS</strong> constant as they require a seed value. The <strong>currentStep$</strong> is set to <strong>null</strong> initially as we don&#39;t want any step to be the current one initially. Notice the dollar sign nomenclature used for BehaviorSubjects - this is used to denote that the property is <strong>subscribable</strong> (such as Observables - properties that users can subscribe to in order to get values streamed to it, or notified of an update in some way).</p>
+<p>Add the rest of the following logic to the steps service, which provides a very comprehensive API that allows users to get the steps, the current step, set the current step, moving to the next step and checking whether the current step is the last one.</p>
+<pre><code>...
+constructor() {
+    // set the current step to be the first one in the list of steps.
+    this.currentStep$.next(this.steps$.value[0]);
+  }
+
+  // sets the current step
+  setCurrentStep(step: StepModel) {
+    this.currentStep$.next(step);
+  }
+
+  // gets the current step and allows user to subscribe to it
+  // by returning it as an Observable
+  getCurrentStep() {
+    return this.currentStep$.asObservable();
+  }
+
+  // gets all available steps, and allows
+  // the users to subscribe to this list of steps
+  getSteps() {
+    return this.steps$.asObservable();
+  }
+
+  // allows the users to programatically move to the next step
+  // and notify any users subscribed to the currentStep$ to be notified
+  moveToNextStep() {
+    const index = this.currentStep$.value.stepIndex;
+
+    if (index &lt; this.steps$.value.length) {
+      this.currentStep$.next(this.steps$.value[index]);
+    }
+  }
+
+  // gets whether the current step is the last one in the list
+  isLastStep() {
+    return this.currentStep$.value.stepIndex === this.steps$.value.length;
+  }
+...
+</code></pre>
+<p>Using <strong>BehaviorSubject</strong> inside your services allows users to subscribe to it, receive notifications when values are available, when they change, and allows you to maintain state across components throughout the lifetime of your application&#39;s execution in a very simple and straightforward way, all in memory.</p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Adding Logic to the Form Component" duration="0">
+        <p>Let&#39;s go to the <em>form.component.ts</em> to add some of the code behind logic.</p>
+<p>Inside of the @Component&#39;s decorator statement, add the <strong>encapsulation: ViewEncapsulation.None</strong> to make sure the styles can be overridden by any wrapping parent component and truly achieve a cascading effect on certain styles. Use this attribute with caution as it may have unintended effects. As long as you wrap your CSS classes correctly, you shouldn&#39;t have issues.</p>
+<pre><code>...
+@Component({
+  selector: &#39;app-form&#39;,
+  templateUrl: &#39;./form.component.html&#39;,
+  styleUrls: [&#39;./form.component.less&#39;],
+  encapsulation: ViewEncapsulation.None // &lt;-- add this line here
+})
+...
+</code></pre>
+<p>At the top of the <strong>FormComponent</strong>, add the following local properties:</p>
+<pre><code>fullName: string;
+selectedExpertise: string;
+userDescription: string;
+currentStep: StepModel;
+currentStepSub: Subscription;
+user: User;
+userSub: Subscription;
+</code></pre>
+<p>The following properties will hold the following:</p>
+<ul>
+<li>fullName: will hold the name of the user</li>
+<li>selectedExpertise: will hold the selected expertise out of several options</li>
+<li>userDescription: will hold the user&#39;s description</li>
+<li>currentStep: will hold a reference of the current step (coming from a service).</li>
+<li>currentStepSub: will hold a reference to a subscribable version of the current step from a service.</li>
+</ul>
+<p>Add below the .form-step styles</p>
+<pre><code>...
+.option-radio {
+    display: flex;
+    align-items: center;
+    padding: 16px 0px;
+
+    label {
+        font-size: 1.2em;
+        margin-left: 12px;
+    }
+
+    input[type=radio] {
+        width: 0.8em !important;
+        height: 0.8em !important;
+        font-size: 2em;
+    }
+}
+
+.input-fullname {
+    border: 1px solid #CECECE;
+    border-radius: 5px;
+    height: 30px;
+    width: 100%;
+    font-family: &#39;ProductSansRegular&#39;, sans-serif;
+    font-size: 1em;
+}
+
+.textarea-profile {
+    border: 1px solid #CECECE;
+    border-radius: 5px;
+    min-height: 100px;
+    width: 100%;
+    font-family: &#39;ProductSansRegular&#39;, sans-serif;
+    font-size: 1em;
+}
+
+.step-question-label {
+    font-size: 1.2em;
+    margin-bottom: 16px;
+}
+...
+</code></pre>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Creating Reusable Angular Components (pt.1) - Application Bar" duration="0">
+        
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Creating Reusable Angular Components (pt.2) - Form Steps" duration="0">
+        
+
+      </google-codelab-step>
+    
+  </google-codelab>
+
+  <script src="https://storage.googleapis.com/codelab-elements/native-shim.js"></script>
+  <script src="https://storage.googleapis.com/codelab-elements/custom-elements.min.js"></script>
+  <script src="https://storage.googleapis.com/codelab-elements/prettify.js"></script>
+  <script src="https://storage.googleapis.com/codelab-elements/codelab-elements.js"></script>
+  <script src="//support.google.com/inapp/api.js"></script>
+
+</body>
+</html>
