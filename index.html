@@ -36,6 +36,7 @@
 <li>Basic Understanding on Angular&#39;s State Management using Services, Rxjs&#39;s BehaviorSubject, Observables and Subscriptions</li>
 <li>How to create reusable Angular Components</li>
 <li>More on Responsive Design / Flexbox Model / CSS3 strategies</li>
+<li>Submitting Data to Firebase Backend</li>
 </ul>
 <h2 is-upgraded>Prerequisites</h2>
 <ul>
@@ -172,44 +173,66 @@ currentStep$: BehaviorSubject&lt;StepModel&gt; = new BehaviorSubject&lt;StepMode
 ...
 </code></pre>
 <p>We initialize the <strong>steps$</strong> BehaviorSubject with the <strong>STEPS</strong> constant as they require a seed value. The <strong>currentStep$</strong> is set to <strong>null</strong> initially as we don&#39;t want any step to be the current one initially. Notice the dollar sign nomenclature used for BehaviorSubjects - this is used to denote that the property is <strong>subscribable</strong> (such as Observables - properties that users can subscribe to in order to get values streamed to it, or notified of an update in some way).</p>
-<p>Add the rest of the following logic to the steps service, which provides a very comprehensive API that allows users to get the steps, the current step, set the current step, moving to the next step and checking whether the current step is the last one.</p>
+<p>Add the rest of the following logic to the steps service, which provides a very comprehensive API that allows users to get the steps,the current step, set the current step, moving to the next step and checking whether the current step is the last one.</p>
+<h2 is-upgraded>Add the constructor</h2>
+<p>Initially we want to start the application by telling the service what the first step is. So right at the constructor, we will assign the current step to be the first one in the steps collection:</p>
 <pre><code>...
 constructor() {
     // set the current step to be the first one in the list of steps.
     this.currentStep$.next(this.steps$.value[0]);
   }
-
-  // sets the current step
-  setCurrentStep(step: StepModel) {
-    this.currentStep$.next(step);
-  }
-
-  // gets the current step and allows user to subscribe to it
+...
+</code></pre>
+<h2 is-upgraded>Add ability to get the current step</h2>
+<p>We need to allow interested parties to subscribe to what the current step is, whenever it changes, etc. and get notified of it. For that, we return the current step as an Observable so components can subscribe to it, that way we know what the current step is at all times, from anywhere in the application:</p>
+<pre><code>...
+// gets the current step and allows user to subscribe to it
   // by returning it as an Observable
   getCurrentStep() {
     return this.currentStep$.asObservable();
   }
-
-  // gets all available steps, and allows
-  // the users to subscribe to this list of steps
-  getSteps() {
-    return this.steps$.asObservable();
+...
+</code></pre>
+<h2 is-upgraded>Add ability to set the current step</h2>
+<p>Now, say you want to update the current step yourself, whether by clicking on that particular step and navigating to it. We will provide a method that does just that. It takes a model of type <em>StepModel</em> and updates the current step. If anyone is subscribed to it, it will receive the notification that it changed.</p>
+<pre><code>...
+// sets the current step
+  setCurrentStep(step: StepModel) {
+    this.currentStep$.next(step);
   }
-
-  // allows the users to programatically move to the next step
-  // and notify any users subscribed to the currentStep$ to be notified
-  moveToNextStep() {
+...
+</code></pre>
+<h2 is-upgraded>Add ability to get all steps</h2>
+<p>What if someone wants to know what all of steps are, their count, etc? Well we can also provide a method that returns an Observable you can subscribe to, and subscribe to changes to all steps as a whole.</p>
+<pre><code>...
+// gets all available steps, and allows
+// the users to subscribe to this list of steps
+getSteps() {
+    return this.steps$.asObservable();
+}
+...
+</code></pre>
+<h2 is-upgraded>Ability to programatically move to the next step</h2>
+<p>We&#39;ll provide the ability to allow users to move to the next step from wherever they are, whoever subscribes to the StepsService and executes this method will be able to do it. The code fetches what the current step&#39;s index is, and based on that it knows whether it can move to the next, based on the number of steps available and whether the current step index is not the last one or hasn&#39;t reached the last index (<em>index &lt; this.steps$.value.length</em>).</p>
+<pre><code>...
+// allows the users to programatically move to the next step
+// and notify any users subscribed to the currentStep$ to be notified
+moveToNextStep() {
     const index = this.currentStep$.value.stepIndex;
 
     if (index &lt; this.steps$.value.length) {
-      this.currentStep$.next(this.steps$.value[index]);
+        this.currentStep$.next(this.steps$.value[index]);
     }
-  }
-
-  // gets whether the current step is the last one in the list
-  isLastStep() {
+}
+...
+</code></pre>
+<h2 is-upgraded>Ability to check whether the current step is the last step</h2>
+<p>This is a nifty little method we created that quickly returns to the user a flag whether the current step being executed is the last one.</p>
+<pre><code>...
+// gets whether the current step is the last one in the list
+isLastStep() {
     return this.currentStep$.value.stepIndex === this.steps$.value.length;
-  }
+}
 ...
 </code></pre>
 <p>Using <strong>BehaviorSubject</strong> inside your services allows users to subscribe to it, receive notifications when values are available, when they change, and allows you to maintain state across components throughout the lifetime of your application&#39;s execution in a very simple and straightforward way, all in memory.</p>
@@ -230,23 +253,155 @@ constructor() {
 ...
 </code></pre>
 <p>At the top of the <strong>FormComponent</strong>, add the following local properties:</p>
-<pre><code>fullName: string;
+<pre><code>...
+fullName: string;
 selectedExpertise: string;
 userDescription: string;
 currentStep: StepModel;
 currentStepSub: Subscription;
 user: User;
 userSub: Subscription;
+...
 </code></pre>
 <p>The following properties will hold the following:</p>
 <ul>
 <li>fullName: will hold the name of the user</li>
-<li>selectedExpertise: will hold the selected expertise out of several options</li>
+<li>selectedExpertise: will hold the selected expertise out of several radiobutton options</li>
 <li>userDescription: will hold the user&#39;s description</li>
 <li>currentStep: will hold a reference of the current step (coming from a service).</li>
 <li>currentStepSub: will hold a reference to a subscribable version of the current step from a service.</li>
 </ul>
-<p>Add below the .form-step styles</p>
+<p>In the constructor of the <strong>FormComponent</strong> class, inject the services we&#39;ll need to pull data from, and subscribe to in order to get notified for data changes.</p>
+<pre><code>...
+constructor(
+    private authenticationService: AuthenticationService,
+    private userService: UserService,
+    private stepsService: StepsService,
+    private router: Router) { }
+...
+</code></pre>
+<p>In the <em>ngOnInit</em> lifecycle hook, subscribe to the <strong>StepsService</strong>&#39;s <em>getCurrentStep()</em> to get the current step being processed, as well as the <strong>AuthenticationService</strong>&#39;s <em>getUser()</em> to get the logged in user information.</p>
+<pre><code>...
+ngOnInit(): void {
+    this.currentStepSub = this.stepsService.getCurrentStep().subscribe((step: StepModel) =&gt; {
+      this.currentStep = step;
+    });
+
+    this.userSub = this.authenticationService.getUser().subscribe((user: User) =&gt; {
+      this.user = user;
+    });
+  }
+...
+</code></pre>
+<p>One best practice in order to avoid memory leaks when handling subscriptions is to properly clean after those by unsubscribing from them. Therefore, create another appropriate lifecycle hook method - <em>ngOnDestroy</em> - that gets called before this component gets destroyed, and is the right place to clean up resources - in this case, unsubscribe from the subscriptions created in the <strong>ngOnInit</strong></p>
+<pre><code>...
+ngOnDestroy(): void {
+    // Unsubscribe to avoid memory leaks and unexpected angular errors
+    this.currentStepSub.unsubscribe();
+    this.userSub.unsubscribe();
+  }
+...
+</code></pre>
+<p>We&#39;ll create several methods that will allow us to trigger actions that will propagate changes throughout the application - right from the FormComponent - and delegate those actions to services, in this case the StepsService. This is the power of services in action - business logic and functionality gets deferred to services while components handle UI rendering and user interactions, following proper Model-View-Controller (or in this case, Services) practices.</p>
+<p>Let&#39;s create a method that will allow us to move to the next step, which we&#39;ll call <em>onNextStep()</em>:</p>
+<pre><code>onNextStep() {
+    if (!this.stepsService.isLastStep()) {
+      this.stepsService.moveToNextStep();
+    } else {
+      // TODO: here we&#39;ll submit the form
+    }
+  }
+</code></pre>
+<p>Let&#39;s create a method that marks this step as complete once an option is selected. In the case of radiobuttons, once one of them is selected, you cannot unselect them, so we can treat the step already as complete. This method captures the <em>selectedExpertise</em> option via data-bindings (more on this later) and marks the step as complete.</p>
+<pre><code>...
+onExpertiseOption() {
+    this.currentStep.isComplete = true;
+  }
+...
+</code></pre>
+<p>We&#39;ll create a method that based on logic, it returns the appropriate string. The method <em>showButtonLabel()</em> shows the corresponding string whether the current step is the last step (<strong>Create Profile</strong>) or not (<strong>Continue</strong>):</p>
+<pre><code>...
+showButtonLabel() {
+    return !this.stepsService.isLastStep() ? &#39;Continue&#39; : &#39;Create Profile&#39;;
+  }
+...
+</code></pre>
+<p>You should be all set with all the code-behind or logic corresponding to the form. Now, let&#39;s proceed to add the elements that will hold each of the step questions in this form and that will bind to the methods and properties created in the <strong>form.component.ts</strong> file above.</p>
+<p>We&#39;ll use a <strong>switch/case</strong> approach, depending on which question&#39;s index, we will render a portion of the DOM, display it to the user and collect a value.</p>
+<p>Let&#39;s go to the <strong>form.component.html</strong> file, and locate the <strong>div</strong> with class <strong>form-step</strong>. Let&#39;s start by creating an Angular&#39;s switch statement, by using the <strong>[ngSwitch]</strong> attribute:</p>
+<pre><code>...
+ &lt;div class=&#34;form-step&#34;&gt;
+    &lt;ng-container [ngSwitch]=&#34;currentStep?.stepIndex&#34;&gt;
+        &lt;!-- rest of the code will go here --&gt;
+    &lt;/ng-container&gt;
+&lt;/div&gt;
+...
+</code></pre>
+<p>The <strong>ngSwitch</strong> works just like a regular <strong>switch</strong> statement - once a case is matched (in our case we want to match against the current step&#39;s index - <strong>currentStep?.stepIndex</strong>), it gets executed, skipping the rest. More info on the <a href="https://angular.io/api/common/NgSwitch" target="_blank">ngSwitch</a>.</p>
+<p>Note: The question mark (?) next to the <em>currentStep</em> property just states that this property may be nullable: that upon the DOM rendering, this property may not be available, so don&#39;t bother rendering this element or block - until the property is available. This is a way to gracefully handling null values that are bound to the DOM.</p>
+<p>Let&#39;s insert the cases inside the <strong>ngSwitch</strong>. For each of the step indexes (1 through 3) we will have a corresponding <strong>ngSwitchCase</strong> - a block of code that once matched against the current steps&#39;s index. Note: Make sure to add all ngSwitchCases below inside the ngSwitch.</p>
+<h2 is-upgraded>Adding Step 1</h2>
+<p>For step one, we will be handling the user to input their full name.</p>
+<pre><code>...
+&lt;ng-container *ngSwitchCase=&#34;&#39;1&#39;&#34;&gt;
+    &lt;div class=&#34;step-question-label&#34;&gt;Enter your full name&lt;/div&gt;
+    &lt;div&gt;
+        &lt;input id=&#34;fullName&#34; (keyup)=&#34;currentStep.isComplete = fullName !== &#39;&#39;&#34;
+            [(ngModel)]=&#34;fullName&#34; type=&#34;text&#34; class=&#34;input-fullname&#34;&gt;
+    &lt;/div&gt;
+&lt;/ng-container&gt;
+...
+</code></pre>
+<p>Notice the <em>input</em> field we are using to collect the user&#39;s input, and the special attribute called <strong>ngModel</strong>. This is the power of Angular&#39;s data binding capabilities, that allows the DOM input element to be <strong>bound</strong> to the property called <strong>fullName</strong>. When the user provides the input into this field, the value will be provided to the <strong>fullName</strong> string property automatically. The double wrapping of the <strong>ngModel</strong> denotes what Angular calls <strong>two-way binding</strong> - updates on either direction (from DOM element to property or from the property to the DOM element) are synchronized. More on Angular&#39;s databinding capabilities <a href="https://www.w3schools.com/angular/angular_databinding.asp" target="_blank">here</a>.</p>
+<p>Check also how in Angular you can capture actions from the DOM, such as <strong>keyup</strong>, <strong>keydown</strong>, <strong>click</strong>, <strong>change</strong>, etc. depending on the field. In our case, we want to handle the <strong>keyup</strong> event from the textfield, and apply the logic to the current step&#39;s <strong>isComplete</strong> property by setting it to true or false whether the property *<strong>fullName</strong> is empty or not, as the user types in the field and characters are input.</p>
+<h2 is-upgraded>Adding Step 2</h2>
+<p>For step two, we want to collect the user&#39;s expertise via radio buttons, so they can pick one out of three options.</p>
+<pre><code>...
+&lt;ng-container *ngSwitchCase=&#34;&#39;2&#39;&#34;&gt;
+    &lt;div class=&#34;step-question-label&#34;&gt;What is your level of expertise?&lt;/div&gt;
+    &lt;div class=&#34;option-radio&#34;&gt;
+        &lt;input (click)=&#34;onExpertiseOption()&#34; type=&#34;radio&#34; name=&#34;expertiseLevel&#34; value=&#34;beginner&#34;
+            [(ngModel)]=&#34;selectedExpertise&#34; id=&#34;exp1&#34; /&gt;
+        &lt;label for=&#34;exp1&#34;&gt;Beginner&lt;/label&gt;
+    &lt;/div&gt;
+    &lt;div class=&#34;option-radio&#34;&gt;
+        &lt;input (click)=&#34;onExpertiseOption()&#34; type=&#34;radio&#34; name=&#34;expertiseLevel&#34; value=&#34;intermediate&#34;
+            [(ngModel)]=&#34;selectedExpertise&#34; id=&#34;exp2&#34; /&gt;
+        &lt;label for=&#34;exp2&#34;&gt;Intermediate&lt;/label&gt;
+    &lt;/div&gt;
+    &lt;div class=&#34;option-radio&#34;&gt;
+        &lt;input (click)=&#34;onExpertiseOption()&#34; type=&#34;radio&#34; name=&#34;expertiseLevel&#34; value=&#34;advanced&#34;
+            [(ngModel)]=&#34;selectedExpertise&#34; id=&#34;exp3&#34; /&gt;
+        &lt;label for=&#34;exp3&#34;&gt;Advanced&lt;/label&gt;
+    &lt;/div&gt;
+&lt;/ng-container&gt;
+...
+</code></pre>
+<p>Notice the <em>ngModel</em> property <strong>selectedExpertise</strong>. In the case of a radio button, only one of the selected radio button options will update the <strong>selectedExpertise</strong> property. It grabs the value in the <strong>value</strong> attribute (beginner, intermediate or advanced) and assign it to <strong>selectedExpertise</strong> accordingly. Upon clicking on one of them, it will call the <em>onExpertiseOption</em> method through the <strong>click</strong> event, which, as shown above, will complete the current step by setting its <strong>isComplete</strong> property to <strong>true</strong>.</p>
+<h2 is-upgraded>Adding Step 3</h2>
+<p>For the last step, we want to collect some text from the user - a brief description.</p>
+<pre><code>...
+&lt;ng-container *ngSwitchCase=&#34;&#39;3&#39;&#34;&gt;
+    &lt;div class=&#34;step-question-label&#34;&gt;What best describes you?&lt;/div&gt;
+    &lt;textarea [(ngModel)]=&#34;userDescription&#34;
+        (keyup)=&#34;currentStep.isComplete = userDescription !== &#39;&#39;&#34; id=&#34;profile-desc&#34;
+        class=&#34;textarea-profile&#34;&gt;&lt;/textarea&gt;
+&lt;/ng-container&gt;
+...
+</code></pre>
+<p>Notice the <strong>ngModel</strong> property <strong>userDescription</strong> which binds the text input into the <em>textarea</em> to this property, and also notice the same treatment on making sure the current step is complete based on the <em>userDescription</em>&#39;s content not being empty.</p>
+<h2 is-upgraded>Allowing the form to move to the next step</h2>
+<p>We must allow the form button at the bottom to allow the user to move through the steps available in the form, which will trigger the required updates in the DOM and show the current step, as well as enable / disable it according to the user&#39;s input at each step.</p>
+<p>Replace the existing <em>button</em> implementation in this form (button with class <em>form-continue-btn common-btn</em>) with this implementation:</p>
+<pre><code>...
+&lt;button (click)=&#34;onNextStep()&#34; 
+[disabled]=&#34;!currentStep?.isComplete&#34; class=&#34;form-continue-btn common-btn&#34;&gt;
+    &#123;&#123; showButtonLabel() }}
+&lt;/button&gt;
+...
+</code></pre>
+<p>Notice now the usage of some of the methods we created earlier in the <em>form.component.ts</em>. The <strong>onNextStep()</strong> method trigged via the <strong>click</strong> event in the button executes the action of moving to the next step, so long as the button is enabled - via the <strong>[disabled]</strong> input attribute. In this input, we supply the logic of whether the current step is complete (<strong>!currentStep?.isComplete</strong>) meaning &#34;disable it if the current step is not complete&#34;, which will feed the boolean result to this input. And last but not least, the templating syntax to show the button&#39;s label via executing the <strong>showButtonLabel()</strong> via <em>&#123;&#123; showButtonLabel() }}</em>.</p>
+<p>Now that the structure of the *<strong>form.component.html</strong> is in place, it&#39;s time to add the CSS to the <strong>form.component.less</strong> file of the form component. Copy the CSS inside the <strong>form.component.less</strong> file, inside the <strong>.form-page-wrapper</strong> block class. The following CSS will provide the styling required for the labels and input fields of the form.</p>
 <pre><code>...
 .option-radio {
     display: flex;
@@ -289,17 +444,513 @@ userSub: Subscription;
 }
 ...
 </code></pre>
+<p>All the HTML and CSS is in place (plus most of the logic). Let&#39;s wrap up the submission of the form in the next step.</p>
 
 
       </google-codelab-step>
     
-      <google-codelab-step label="Creating Reusable Angular Components (pt.1) - Application Bar" duration="0">
-        
+      <google-codelab-step label="Submitting the Form (pt.1)" duration="0">
+        <p>We will handle the sending of the data, but the data still won&#39;t make it to the Firebase backend  yet. So let&#39;s create the method that will receive the assembled data in the <strong>UserService</strong>. Let&#39;s call it <strong>addUserData</strong>. Let&#39;s make it for now so that it returns a <a href="https://web.dev/promises/" target="_blank">Promise</a> - an object that represents an action that will complete in the future.</p>
+<p>Go to the <strong>UserService</strong> service class <strong>user.service.ts</strong> and add a method called <strong>addUserData</strong> that receives the data associated with the member (the data we&#39;ll collect via the form) and the <strong>userId</strong> of the logged in user.</p>
+<p>First, create a small interface contract called <strong>MemberData</strong> that will hold the fields we will be sending to Firebase later. Go to the *<strong>models</strong> folder and add a file called <strong>member.model.ts</strong>. Add the following code:</p>
+<pre><code>export interface MemberData {
+    description: string;
+    skills: string;
+    name: string;
+    photoURL: string;
+    isOnline: boolean;
+}
+</code></pre>
+<p>The interface above will serve as the contract for the JSON object we will assemble and send to Firebase via the UserService&#39;s <strong>addUserData</strong> method.</p>
+<p>Now, back to the <strong>user.service.ts</strong> file, add the following method:</p>
+<pre><code>...
+addUserData(data: MemberData, userId) {
+    return new Promise&lt;any&gt;((resolve, reject) =&gt; {
+        // on success, store a flag to state the user is registered
+        localStorage.setItem(&#39;userId&#39;, userId);
+
+        // resolve the promise
+        resolve();
+    });
+  }
+...
+</code></pre>
+<p>Make sure to import the <strong>MemberData</strong> in this service. Notice we are creating a <a href="https://web.dev/promises/" target="_blank">Promise</a> that returns right away, but before it does, we store a value in local storage called <strong>userId</strong> which holds the logged in user id to denote that this user&#39;s data has already been added to Firebase. This is the same property we are accessing in the method <strong>isUserRegistered</strong> that we created in earlier labs.</p>
+<p>Back in the <strong>form.component.ts</strong> let&#39;s provide implementation for the method that will submit the member data. Add the following method inside the body of the <strong>FormComponent</strong> at the bottom:</p>
+<pre><code>...
+onSubmit() {
+    const userData = {
+      description: this.userDescription,
+      skills: this.selectedExpertise,
+      name: this.fullName,
+      photoURL: this.user.photoURL,
+      isOnline: false
+    };
+
+    // add the user data, and upon success
+    // redirect to the confirmation page
+    this.userService.addUserData(userData, this.user.uid)
+      .then(() =&gt; {
+        // TODO: redirect to a confirmation page
+      });
+  }
+...
+</code></pre>
+<p>Notice how we, in the object <strong>userData</strong> we assemble the values collected from the bound input fields along with some additional data from Google&#39;s authenticated user (photoURL) and then we send it to the previously created method <strong>addUserData</strong> in the *<strong>userService</strong>, along with the authenticated user&#39;s <em>uid</em>:</p>
+<pre><code>this.userService.addUserData(userData, this.user.uid)
+      .then(() =&gt; {
+        // TODO: redirect to a confirmation page
+      });
+</code></pre>
+<p>Right now we are just redirecting right back to the form page, but in a later step we will create the confirmation page where the user will be redirected upon successful submission of the data.</p>
+<p>Complete the <em>onNextStep()</em> and add the logic to submit the form upon the current step being the last one:</p>
+<pre><code>...
+onNextStep() {
+    if (!this.stepsService.isLastStep()) {
+        this.stepsService.moveToNextStep();
+    } else {
+        this.onSubmit(); // call the onSubmit method here
+    }
+}
+...
+</code></pre>
+<p>Notice the call to <strong>onSubmit</strong> being made here. When the user clicks through the steps and arrives at the last one, the <strong>this.onSubmit()</strong> method will be triggered, launching the sequence of events that will send the data to Firebase.</p>
+
 
       </google-codelab-step>
     
-      <google-codelab-step label="Creating Reusable Angular Components (pt.2) - Form Steps" duration="0">
+      <google-codelab-step label="Creating Reusable Angular Components (pt.1) - Form Steps" duration="0">
+        <p>At this point, the Form Component should be functional to a certain extent, but we want to add a little more functionality to it. We will also learn about how to create encapsulated, reusable components that manage their own state or draw state from other services, but that can be added anywhere in the application and provide value.</p>
+<p>While the form component may be looking like this now:</p>
+<p class="image-container"><img alt="alt text" src="img/afd90a03628cd67a.png"></p>
+<p>We want to add a component that illustrates visually which step we are in the process and the state of that step (whether it is complete or not). We will create a component that looks like this:</p>
+<p class="image-container"><img alt="alt text" src="img/74cb5da2e227d503.png"></p>
+<p>We will place it on top of the form elements and will indicate us as we move through the step which is the current step and whether it&#39;s completed.</p>
+<h2 is-upgraded>Create the component</h2>
+<p>Navigate to the <em>app/components</em> folder in the Visual Studio command line tool, and execute the Angular CLI Command for generating a component, <em>ng generate component form-steps</em> (a cool shorthand for this command is <em>ng g c form-steps</em>).</p>
+<pre><code>ng generate component form-steps
+</code></pre>
+<p>This creates the corresponding folder called <em>form-steps</em>, and creates the corresponding HTML, TS and LESS files to work with.</p>
+<h2 is-upgraded>Add Logic to the form steps</h2>
+<p>Navigate to the <em>form-steps.component.ts</em>, and on top of the generated class <em>FormStepsComponent</em>, make sure it is decorated appropriately, and add the <em>encapsulation</em> option of <em>ViewEncapsulation.None</em> and add the required import statements:</p>
+<pre><code>...
+@Component({
+  selector: &#39;app-form-steps&#39;,
+  templateUrl: &#39;./form-steps.component.html&#39;,
+  styleUrls: [&#39;./form-steps.component.less&#39;],
+  encapsulation: ViewEncapsulation.None
+})
+export class FormStepsComponent implements OnInit {
+...
+</code></pre>
+<p>Let&#39;s add two properties of type Observable to manage the subscription and values received from the steps service that we&#39;ll inject shortly. The <em>steps</em> property of type <em>Observable</em> will hold a reference to all the steps available in the process, while <em>currentStep</em> of type <em>Observable</em> will know about the current step.</p>
+<pre><code>...
+steps: Observable&lt;StepModel[]&gt;;
+currentStep: Observable&lt;StepModel&gt;;
+...
+</code></pre>
+<p>In the *<strong>ngOnInit</strong>, retrieve the subscriptions and assign to the corresponding property.</p>
+<pre><code>...
+ngOnInit(): void {
+    this.steps = this.stepsService.getSteps();
+    this.currentStep = this.stepsService.getCurrentStep();
+}
+...
+</code></pre>
+<p>Notice we are not subscribing directly, but just returning the <strong>asObservable</strong> value that the methods <em>getStep()</em> and <em>getCurrentStep()</em> provide to us. We will handle the retrieval and unsubscription right from the DOM. You&#39;ll check below. For now please follow along.</p>
+<p>Let&#39;s provide the ability for users to click on one of the step bubbles which will set the current step.</p>
+<pre><code>...
+onStepClick(step: StepModel) {
+    this.stepsService.setCurrentStep(step);
+  }
+...
+</code></pre>
+<p>The <em>onStepClick</em> method takes a <em>StepModel</em> as a parameter and will set the current step by calling the StepService&#39;s <em>setCurrentStep</em>. Pretty neat!</p>
+<p>Now, implement the <em>ngOnDestroy</em> by both adding the class implementation of <strong>OnDestroy</strong> (add it next to the <strong>OnInit</strong>):</p>
+<pre><code>...
+export class FormStepsComponent implements OnInit, OnDestroy {
+...
+</code></pre>
+<p>Then add the method at the bottom of the body of the FormStepsComponent:</p>
+<pre><code>...
+ngOnDestroy(): void {
+    const stepData = {
+        stepIndex: 1,
+        isComplete: false,
+        isCurrent: false
+    };
+    this.stepsService.setCurrentStep(stepData);
+  }
+...
+</code></pre>
+<p>What we&#39;re doing here is upon this component being destroyed (navigating to another page, being programatically removed from the DOM) it cleans after itself by resetting the current step back to the initial state (the first step), since remember Angular is maintaining all of this state in memory through the StepsService.</p>
+<h2 is-upgraded>Add the HTML Elements of the Form Steps Component</h2>
+<p>Now let&#39;s add the user interface elements. We will add just regular HTML structural elements (divs and the like) to make it very vanilla, and style them with CSS.</p>
+<p>In the <em>form-steps.component.html</em>, add the following HTML code:</p>
+<pre><code>...
+&lt;div class=&#34;form-steps-container&#34;&gt;
+    &lt;ng-container *ngFor=&#34;let step of steps | async; let i = index;&#34;&gt;
+        &lt;div (click)=&#34;onStepClick(step)&#34;
+            [ngClass]=&#34;{ &#39;step-complete&#39;: step.isComplete, &#39;step-incomplete&#39;: !step.isComplete, &#39;step-current&#39;: (currentStep | async)?.stepIndex === step.stepIndex }&#34;
+            class=&#34;step-bubble&#34;&gt;&#123;&#123; step.stepIndex }}&lt;/div&gt;
+        &lt;div *ngIf=&#34;i &lt; (steps | async)?.length - 1&#34; class=&#34;step-divider&#34;&gt;&lt;/div&gt;
+    &lt;/ng-container&gt;
+&lt;/div&gt;
+...
+</code></pre>
+<p>The structure above wraps the whole component in a div called <strong>form-steps-container</strong>. As its child, it has an Angular construct called an <strong>NgContainer</strong>; this type of container is a structural directive that doesn&#39;t render in the DOM, but only facilitates the rendering of elements inside it.</p>
+<p>The <strong>ng-container</strong> tag allows us to perform a loop at that level, and on each iteration of the loop (<strong>let steps of steps</strong>) the HTML inside will be rendered for as many iterations are available. This clean approach prevents you from having extra DOM elements in your structure, and only render what&#39;s needed.</p>
+<p>In this same line, notice the keyword <strong>async</strong>. This <strong>async</strong> is a special pipe in Angular (more of AsyncPype <a href="https://angular.io/api/common/AsyncPipe" target="_blank">here</a>) that unwraps a value from an asynchronous primitive (in our case, the <strong>steps</strong> property). It also takes care of doing the unsubscribing for us once is done receiving the value (no need to do <em>unsubscribe</em> in the <em>ngOnDestroy</em>!) saving us a ton of code and subscription management.</p>
+<p>Inside of the <strong>ng-container</strong> for each iteration, we render the div that will represent each step bubble, where we render the step index (<em>&#123;&#123; step.stepIndex }}</em>) and add conditional classes via the Angular input <em>[ngClass]</em> which is very useful in order to add programatic classes based on some logic. Here we add CSS classes for when whether the step is complete or not, and the <em>[ngClass]</em> input takes care of displaying the appropriate one.</p>
+<p>There&#39;s another div that we use as the separator line between the bubbles, which we render conditionally (using the <strong>ngIf</strong> structural directive) which renders the element in the DOM <strong>only</strong> if that condition is met (the step divider will show only next to every step, except for the last one):</p>
+<pre><code>...
+&lt;div *ngIf=&#34;i &lt; (steps | async)?.length - 1&#34; class=&#34;step-divider&#34;&gt;&lt;/div&gt;
+...
+</code></pre>
+<p>Very cool. Now that the HTML is in place, let&#39;s proceed to add the styling for it.</p>
+<pre><code>...
+@import &#39;./../../../assets/styles/colors.less&#39;;
+
+.form-steps-container {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 32px;
+    align-items: center;
+}
+
+.step-bubble {
+    padding: 8px;
+    border: 3px solid @color_blue;
+    width: 12px;
+    height: 12px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 50%;
+    color: @color_blue;
+    font-size: 1em;
+    cursor: pointer;
+    user-select: none;
+}
+
+.step-divider {
+    height: 1px;
+    background: @color_blue;
+    flex: 1;
+    margin: 0px 10px;
+}
+
+.step-current, .step-complete {
+    background: @color_blue;
+    color: #FFF;
+}
+...
+</code></pre>
+<p>Check out the styles applied to the components. The <em>form-steps.container</em> uses <strong>display: flex</strong> and <strong>justify-content: space-between</strong> to place the step bubbles spaced out evenly, and aligned center on the vertical axis (<em>align-items: center</em>).</p>
+<p>This component is complete. Now, let&#39;s add it to the form component.</p>
+<p>Let&#39;s go to the <strong>form.component.ts</strong> file. Let&#39;s add this self-contained reusable component (the form steps component) right on top of the form steps. The selector is called <em>app-form-steps</em></p>
+<pre><code>...
+ &lt;section class=&#34;form-step-container&#34;&gt;
+    &lt;app-form-steps&gt;&lt;/app-form-steps&gt; &lt;!-- add the form steps component here --&gt;
+    &lt;div class=&#34;form-step&#34;&gt;
+        ... (rest of the code) ...
+    &lt;/div&gt;
+&lt;/section&gt;
+...
+</code></pre>
+<p>Now we have a component that shows the current step and indicates our progress along the form, without barely any changes to the form component. This is the advantage of self-contained, reusable, encapsulated components in Angular and their ability to tap into services to manage their state.</p>
+<p>In the next step we will be creating yet another component that will be used at a more global level - the application bar.</p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Creating Reusable Angular Components (pt.2) - Application Bar" duration="0">
+        <p>We will be creating a similar reusable component as in the form steps, but this one will be more reusable than the form steps. The form steps only lives in the form component, but the app bar will be used in more than one place.</p>
+<p>Your application will look like this after the app bar is added:</p>
+<p class="image-container"><img alt="alt text" src="img/78a5045eed96d179.png"></p>
+<p>From this component, anywhere you place it, you&#39;ll be able to log out, and the option to access the user&#39;s profile page (if enabled). We&#39;ll talk more in details about this option.</p>
+<p>Let&#39;s create the component, same way as the form steps. Navigate to the *<strong>app/components</strong> folder, and in the Visual Studio Code command line, execute the command <strong>ng generate component app-bar</strong>.</p>
+<pre><code>ng generate component app-bar
+</code></pre>
+<h2 is-upgraded>Add Logic to the App Bar Component</h2>
+<p>The Angular CLI generates the corresponding HTML, TS and LESS files. Open the <strong>app-bar.component.ts</strong> generated file to add the logic.</p>
+<p>In the <em>@Component</em> decorator, add the <strong>encapsulation: ViewEncapsulation.None</strong>:</p>
+<pre><code>...
+@Component({
+  selector: &#39;app-bar&#39;,
+  templateUrl: &#39;./app-bar.component.html&#39;,
+  styleUrls: [&#39;./app-bar.component.less&#39;],
+  encapsulation: ViewEncapsulation.None
+})
+export class AppBarComponent implements OnInit {
+...
+</code></pre>
+<p>We will introduce another Angular concept that allows you to create encapsulated components - Inputs. Inputs allow you feed data into an Angular component via these special properties. They receive updates and automatically reflect their changes in the DOM. More info on Angular Inputs <a href="https://angular.io/api/core/Input" target="_blank">here</a>.</p>
+<p>Let&#39;s add two Input properties inside the body of the AppBarComonent class:</p>
+<pre><code>...
+@Input() showProfile: boolean;
+@Input() title: string;
+...
+</code></pre>
+<p>Let&#39;s inject the <em>AuthenticationService</em> from which we&#39;ll access the functionality to log out and to access the user profile (in a separate lab) via the constructor:</p>
+<pre><code>...
+constructor(private authService: AuthenticationService) { }
+...
+</code></pre>
+<p>Let&#39;s create a method to acess the log out functionality, called <em>onLogout()</em>:</p>
+<pre><code>...
+onLogout() {
+    this.authService.signOut();
+  }
+...
+</code></pre>
+<p>Let&#39;s create a method to access the user&#39;s profile page (let&#39;s add the hook now). In the <em>AuthenticationService</em> file, <strong>authentication.service.ts</strong>, add a method called <strong>userProfile</strong>, all this method will do is redirect to a route we&#39;ll call <strong>profile</strong>. For now add the hook method, we&#39;ll use it later.</p>
+<pre><code>...
+userProfile() {
+    this.router.navigate([&#39;./profile&#39;]);
+  }
+...
+</code></pre>
+<p>Now, back to the <strong>AppBarComponent</strong> class, file <strong>app-bar.component.ts</strong>, add a method called <em>onProfile()</em> which will trigger the navigation to the user profile page (later in another lab).</p>
+<pre><code>...
+userProfile() {
+    this.router.navigate([&#39;./profile&#39;]);
+  }
+...
+</code></pre>
+<h2 is-upgraded>Add the HTML Elements of the App Bar</h2>
+<p>Now that the logic is in place, let&#39;s proceed to add the HTML elements and hook them up to the logic. In the <em>ap-bar.component.html</em> add the following code block:</p>
+<pre><code>...
+&lt;div class=&#34;app-bar&#34;&gt;
+    &lt;span class=&#34;logout-btn&#34; (click)=&#34;onLogout()&#34;&gt;&lt;span class=&#34;logout-icon material-icons&#34;&gt;login&lt;/span&gt;&lt;/span&gt;
+    &lt;span&gt;&#123;&#123; title }}&lt;/span&gt;
+    &lt;span *ngIf=&#34;showProfile&#34; class=&#34;profile-btn&#34; (click)=&#34;onProfile()&#34;&gt;&lt;span
+            class=&#34;profile-icon material-icons&#34;&gt;account_circle&lt;/span&gt;&lt;/span&gt;
+&lt;/div&gt;
+...
+</code></pre>
+<p>The <strong>app-bar</strong> div wraps this component, with three children components: a <strong>span</strong> for the logout button, a <strong>span</strong> for a title (if provided via @Input()), and a <strong>span</strong> that optionally displays if the <em>showProfile</em> flag is provided (also via @Input()).</p>
+<p>Let&#39;s add the CSS in the LESS file generated, <strong>app-bar.component.less</strong>:</p>
+<pre><code>...
+@import &#39;./../../../assets/styles/colors.less&#39;;
+
+.app-bar {
+    padding: 32px 32px 0px 32px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    .logout-btn {
+        color: @color_blue;
+        font-size: 0.9em;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+
+        .logout-icon {
+            font-size: 2em !important;
+        }
+    }
+
+    .profile-btn {
+        color: @color_blue;
+        cursor: pointer;
         
+        .profile-icon {
+            font-size: 2em !important;
+        }
+    }
+}
+...
+</code></pre>
+<h2 is-upgraded>BONUS: Using Material Icons</h2>
+<p>You may have noticed that we are not referring to any physical images in this component, yet you are seeing icons in the design. This is thanks to the Google Material Icons CSS that has been imported into the project. Let&#39;s add a reference to this great free library of icons provided by Google that you can also leverage in your projects. The Material Icons from Google are available <a href="https://material.io/resources/icons/?style=baseline" target="_blank">here</a>.</p>
+<p>In the <em>index.html</em> file of this project, in the <em>head</em> seaction, add the following <strong>link</strong> tag reference:</p>
+<pre><code>...
+&lt;link href=&#34;https://fonts.googleapis.com/icon?family=Material+Icons&#34; rel=&#34;stylesheet&#34;&gt;
+...
+</code></pre>
+<p>By just adding this at the root level of your project (the index.html file) you can access all icons available in the Material Icons Library anywhere in the project.</p>
+<p>In the next lab, we will handle the actual submission of the user data, and showing a confirmation page upon success.</p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Add A Confirmation Page Upon Submission" duration="0">
+        <p>In the last step of this lab, we will create a confirmation page upon successful submission of the data to our Firebase backend.</p>
+<p>At the end, the page should look like this:</p>
+<p class="image-container"><img alt="alt text" src="img/70d02ae980443c41.png"></p>
+<p>Let&#39;s dive right in!</p>
+<p>Create a separate page at the root of the app folder, let&#39;s call it <strong>profile-confirmation</strong> and let&#39;s use the CLI for this. Go to the root of the project through the Visual Studio command line and type the following command:</p>
+<pre><code>...
+ng generate component profile-confirmation
+...
+</code></pre>
+<p>This should as always generate HTML, TS and LESS files under a folder called <em>profile-confirmation</em>.</p>
+<p>Go to the <strong>profile-confirmation.component.ts</strong> where the logic lives and let&#39;s add the logic. As always add the <em>encapsulation: ViewEncapsulation.None</em> option in the @Component&#39;s decorator section:</p>
+<pre><code>...
+@Component({
+  selector: &#39;app-profile-confirmation&#39;,
+  templateUrl: &#39;./profile-confirmation.component.html&#39;,
+  styleUrls: [&#39;./profile-confirmation.component.less&#39;],
+  encapsulation: ViewEncapsulation.None
+})
+export class ProfileConfirmationComponent implements OnInit {
+...
+</code></pre>
+<p>Add a property of type <strong>Observable</strong> called <em>user</em> inside the body of the <em>ProfileConfirmationComponent</em> class, to hold the reference of the logged in user from Firebase:</p>
+<pre><code>...
+user: Observable&lt;User&gt;;
+...
+</code></pre>
+<p>In the constructor of the <em>ProfileConfirmationComponent</em> class, inject the <em>AuthenticationService</em> since this service allows us to access the user and the functionality to navigate to the profile page (the profile page will be in another lab).</p>
+<pre><code>...
+constructor(
+    private authenticationService: AuthenticationService
+  ) { }
+...
+</code></pre>
+<p>In the <em>ngOnInit</em>, as in previous examples, subscribe to the <em>AuthenticationService</em>&#39;s <strong>getUser()</strong> method, which returns the subscribable Observable from this service to get access to the logged in user information. Hold on to the Observable in the previously created property called <em>user</em>:</p>
+<pre><code>...
+ngOnInit(): void {
+    this.user = this.authenticationService.getUser();
+  }
+...
+</code></pre>
+<p>Create a separate method that will allow us to navigate to the user profile upon having submitted their information. Call the method <strong>navigateToProfile()</strong> which will internally access the <em>AuthenticationService</em>&#39;s <strong>userProfile</strong> method.</p>
+<pre><code>...
+navigateToProfile() {
+    this.authenticationService.userProfile();
+  }
+...
+</code></pre>
+<p>This is it as far as logic for this component. Let&#39;s go with the HTML and CSS.</p>
+<h2 is-upgraded>Add the HTML Elements of the Profile Confirmation Page</h2>
+<p>Locate the <em>profile-confirmation.component.html</em> in the <em>profile-confirmation</em> folder, and paste the following HTML structure:</p>
+<pre><code>...
+&lt;div id=&#34;confirmation-page-container&#34;&gt;
+    &lt;div class=&#34;confirmation-page-wrapper&#34;&gt;
+        &lt;div class=&#34;confirmation-page-top&#34;&gt;
+            &lt;div class=&#34;confirmation-check&#34;&gt;
+                &lt;span class=&#34;confirmation-icon material-icons&#34;&gt;check_circle&lt;/span&gt;
+            &lt;/div&gt;
+            &lt;div class=&#34;thank-you-label&#34;&gt;Thank you,&lt;/div&gt;
+            &lt;div class=&#34;profile-name&#34;&gt;&#123;&#123; (user | async).displayName }}&lt;/div&gt;
+            &lt;div&gt;Your profile has been created.&lt;/div&gt;
+        &lt;/div&gt;
+        &lt;button (click)=&#34;navigateToProfile()&#34; class=&#34;profile-page-btn common-btn&#34;&gt;
+            Go To Profile Page
+        &lt;/button&gt;
+    &lt;/div&gt;
+&lt;/div&gt;
+...
+</code></pre>
+<p>Notice the user of the Material icons again in the <em>span</em> with class <strong>confirmation-icon</strong>. Focus on the <strong>user</strong> property, where we are again using the <strong>async</strong> keyword to unwrap its value, and an inner property called <strong>displayName</strong>. Also notice the <em>button</em> with the <em>(click)</em> Angular output wired to the <strong>navigateToProfile()</strong> method, which directs the user to the profile page accordingly.</p>
+<h2 is-upgraded>Adding the CSS for the Profile Confirmation Component</h2>
+<p>Now let&#39;s add the CSS for this component into its LESS file. Locate the file <strong>profile-confirmation.component.less</strong> and let&#39;s paste the following styles:</p>
+<pre><code>@import &#39;./../../assets/styles/colors.less&#39;;
+
+#confirmation-page-container {
+    height: 100vh;
+    display: flex;
+}
+
+.confirmation-page-wrapper {
+    margin: 32px;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+
+    .confirmation-page-top {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+
+        .thank-you-label {
+            margin-top: 16px;
+            font-size: 1.5em;
+        }
+
+        .profile-name {
+            font-size: 2em;
+            margin-bottom: 32px;
+        }
+    }
+ 
+    .confirmation-icon {
+        color: @color_profile;
+        font-size: 4em;
+    }
+}
+
+.profile-page-btn {
+    background: @color_profile;
+}
+</code></pre>
+<p>If we dissect a bit the CSS, we notice that the styles are using a wrapping strategy that closely resembles the HTML structure. The outermost container (<em>#confirmation-page-container</em>) is occupying the whole viewport height, so its children can stretch with flexibility.</p>
+<p>Then the <em>.confirmation-page-wrapper</em> is the most immediate child to this parent container, and applies a 32px margin all around, and lays out its children in a vertical fashion using <em>display: flex</em> and <em>flex-direction: column</em>. See also how it has to explicitly state that its witdh is 100% so it stretches with its parent.</p>
+<p>Inside this wrapper, only two components reside - the <strong>confirmation-page-top</strong> and the <strong>button</strong>. We lay them out by setting the <strong>confirmation-page-top</strong> container to occupy the majority of the space (setting its *<strong>flex</strong> to 1) and letting the button get the remaining space in the page. This forces the button to just obtain the height it needs and makes the top container stretch heightwise, pushing the button down and taking the rest of the space. Regardless of the height of the viewport, the <strong>confirmation-page-top</strong> will always have most of the space, and the <strong>button</strong> will be anchored to the bottom.</p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Connecting the Submission of the User Data to this Confirmation Page" duration="0">
+        <p>Now that the profile confirmation page, let&#39;s perform the actual submission. Since the confirmation page is created, right now we don&#39;t have a way to access it. We need to add a route to it. Go to the <em>app-routing.module.ts</em> file and add the following line below the form route:</p>
+<pre><code>...
+{ path: &#39;confirmation&#39;, component: ProfileConfirmationComponent, canActivate: [AuthGuard] },
+...
+</code></pre>
+<p>At the end, your <em>app-routing.module.ts</em> should look like this:</p>
+<pre><code>  { path: &#39;login&#39;, component: LoginComponent },
+  { path: &#39;form&#39;, component: FormComponent, canActivate: [AuthGuard] },
+  { path: &#39;confirmation&#39;, component: ProfileConfirmationComponent, canActivate: [AuthGuard] },
+  { path: &#39;&#39;, redirectTo: &#39;/login&#39;, pathMatch: &#39;full&#39; }
+</code></pre>
+<p>This will allow us now to navigate to this page upon successful data submission. Add the required imports here.</p>
+<p>We haven&#39;t taken care of submitting the data upon sending the payload via the *<strong>UserService</strong>&#39;s <strong>addUserData</strong> method. Let&#39;s fill in the blanks.</p>
+<p>The existing code is just returning a <em>Promise</em> that just resolves so things can keep moving. Now let&#39;s add the Firebase code that will enable us to send data. Go to the <em>UserService</em>&#39;s <strong>addUserData</strong> and replace the contents of the Promise by the following code:</p>
+<pre><code>...
+addUserData(data: MemberData, userId) {
+    return new Promise&lt;any&gt;((resolve, reject) =&gt; {
+
+     // NEW CODE STARTS HERE
+
+      this.firestore
+        .collection(&#39;community&#39;) // the name of the collection
+        .doc(userId) // create the document from the user&#39;s unique uid
+        .set(data)
+        .then(res =&gt; {
+          // on success, store a flag to state the user is registered
+          localStorage.setItem(&#39;userId&#39;, userId);
+
+          // resolve the promise
+          resolve();
+        }, err =&gt; {
+          // on error, reject the promise
+          reject(err);
+        });
+
+    // NEW CODE ENDS HERE
+    });
+  }
+...
+</code></pre>
+<p>Let&#39;s dissect this code a bit.</p>
+<p>Since Firebase is already configured, we should be able to access the <em>Firebase Cloud Store</em> at this point. We will be finding a collection called <strong>community</strong> (if it doesn&#39;t exists, it creates it); within this collection, it creates a new document using the logged in user id, then under that document, it sets its data using the MemberData payload provided.</p>
+<p>Upon successful saving into Firebase, we capture the success in the <em>.then()</em> portion of the Firebase&#39;s Promise, set the <strong>localStorage</strong> item called <strong>userID</strong> and store the user&#39;s UID there (to state that the user is already in the system and registered), then resolve the outer Promise by calling its <em>resolve()</em> method.</p>
+<p>Just in case, upon an error during saving into Firebase, we capture the error in the <em>err</em> Promise callback, and <em>reject()</em> the outer Promise, passing the error received.</p>
+<h2 is-upgraded>Adding the navigation to the Profile Confirmation Component</h2>
+<p>Let&#39;s go to the <em>form.component.ts</em>&#39;s <strong>onSubmit()</strong> method, and find the block of code that says <strong>this.userService.addUserData</strong>. Inside this method, replace the <em>TODO</em> for the actual redirection to the confirmation page:</p>
+<pre><code>this.userService.addUserData(userData, this.user.uid)
+      .then(() =&gt; {
+        this.router.navigate([&#39;/confirmation&#39;]);
+      });
+</code></pre>
+<p>Upon successful submission of the data, Firebase relays control back to the application, which returns back to this page and then performs the navigation to the Profile Confirmation page via the <strong>this.router.navigate([‘/confirmation&#39;]);</strong> statement.</p>
+<p>That&#39;s it for this lab - you should be able to have a fully-functional form, and learned how to add reusable encapsulated components with access to services to manage their own states</p>
+
 
       </google-codelab-step>
     
