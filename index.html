@@ -52,6 +52,14 @@
     
       <google-codelab-step label="Creating the Form Page" duration="0">
         <p>In the previous lab, you should&#39;ve created the login page in full, and the placeholder form page. If not, refer back to the previous lab where the form page is created, then come back to this lab.</p>
+<p>We will be using the Angular FormsModule as the basis to add user input functionality in the form component. Hence, we need to add this FormsModule in the app.module.ts.</p>
+<pre><code>  imports: [
+    BrowserModule,
+    ...
+    FormsModule
+  ],
+
+</code></pre>
 <p>If so, please find the <strong>form.component.html</strong>. Let&#39;s build the page structure.</p>
 <pre><code>&lt;div id=&#34;form-page-container&#34;&gt;
     &lt;!-- placeholder for application bar --&gt;
